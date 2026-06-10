@@ -30,6 +30,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <sys/stat.h>
 
 #include <openssl/evp.h>
@@ -62,6 +63,12 @@ void win(void) {
 #define STOR_MAX_INPUT    (64u * 1024u * 1024u)
 #define STOR_MAX_NAME_LEN (1u << 20)
 #define STOR_MAX_COUNT    (1u << 24)
+#define STOR_MAX_ITERS    (4u * 1000u * 1000u)  /* clamp PBKDF2 cost from a forged db */
+
+/* Minimum on-disk size of one record, used to bound speculative allocations
+ * against the actual file length (a forged count can't exceed what's present). */
+#define MIN_USER_BYTES 44   /* namelen(4)+salt(16)+iters(4)+verifier(16)+nfiles(4) */
+#define MIN_FILE_BYTES 5    /* namelen(4)+has_content(1) */
 
 /* ---------------- fatal error path ---------------- */
 static void fail(void) {
@@ -278,7 +285,7 @@ static int db_parse(const uint8_t *data, size_t len, DB *db) {
     if (rd_bytes(&r, magic, 4) || memcmp(magic, "STOR", 4) != 0) return -1;
     if (rd_u8(&r, &ver) || ver != DB_VERSION) return -1;
     if (rd_u32(&r, &nusers)) return -1;
-    if (nusers > STOR_MAX_COUNT) return -1;
+    if (nusers > STOR_MAX_COUNT || nusers > rd_remaining(&r) / MIN_USER_BYTES) return -1;
     if (nusers == 0) return 0;
 
     db->users = calloc(nusers, sizeof(User));
@@ -295,9 +302,9 @@ static int db_parse(const uint8_t *data, size_t len, DB *db) {
         u->name[nl] = '\0';
         u->namelen = nl;
         if (rd_bytes(&r, u->salt, SALT_LEN)) goto corrupt;
-        if (rd_u32(&r, &u->iters)) goto corrupt;
+        if (rd_u32(&r, &u->iters) || u->iters < 1 || u->iters > STOR_MAX_ITERS) goto corrupt;
         if (rd_bytes(&r, u->verifier, VERIF_LEN)) goto corrupt;
-        if (rd_u32(&r, &nf) || nf > STOR_MAX_COUNT) goto corrupt;
+        if (rd_u32(&r, &nf) || nf > STOR_MAX_COUNT || nf > rd_remaining(&r) / MIN_FILE_BYTES) goto corrupt;
         if (nf > 0) {
             u->files = calloc(nf, sizeof(File));
             if (!u->files) goto corrupt;
@@ -379,10 +386,16 @@ static void db_serialize(const DB *db, Buf *b) {
 static void db_save(const DB *db) {
     Buf b;
     FILE *f;
+    int fd;
     b.p = NULL; b.len = 0; b.cap = 0;
     db_serialize(db, &b);
-    f = fopen(DB_TMP, "wb");
-    if (!f) { free(b.p); fail(); }
+    /* O_EXCL after unlink: never follow/overwrite a pre-planted symlink, and
+     * create the store owner-only (0600). */
+    unlink(DB_TMP);
+    fd = open(DB_TMP, O_WRONLY | O_CREAT | O_EXCL, 0600);
+    if (fd < 0) { free(b.p); fail(); }
+    f = fdopen(fd, "wb");
+    if (!f) { close(fd); unlink(DB_TMP); free(b.p); fail(); }
     if (b.len > 0 && fwrite(b.p, 1, b.len, f) != b.len) { fclose(f); remove(DB_TMP); free(b.p); fail(); }
     if (fflush(f) != 0)                                  { fclose(f); remove(DB_TMP); free(b.p); fail(); }
     fclose(f);
@@ -523,7 +536,7 @@ static int do_write(const char *user, const char *key, const char *file,
     ct = xmalloc(clen ? clen : 1);
     ctlen = gcm_encrypt(keymat, iv, aad, aadlen, content, clen, ct, tag);
     free(aad);
-    if (content_owned) free(content);
+    if (content_owned) { secure_zero(content, clen); free(content); }
     secure_zero(keymat, sizeof(keymat));
     if (ctlen < 0) { free(ct); free_db(&db); fail(); }
 
@@ -565,7 +578,8 @@ static int do_read(const char *user, const char *key, const char *file,
         r = gcm_decrypt(keymat, fl->iv, aad, aadlen, fl->ct, fl->ctlen, fl->tag, pt);
         free(aad);
         if (r < 0) {                                       /* tampered / wrong key */
-            free(pt); secure_zero(keymat, sizeof(keymat)); free_db(&db); fail();
+            secure_zero(pt, fl->ctlen); free(pt);
+            secure_zero(keymat, sizeof(keymat)); free_db(&db); fail();
         }
         ptlen = (size_t)r;
     }
@@ -582,7 +596,7 @@ static int do_read(const char *user, const char *key, const char *file,
         if (ptlen > 0) fwrite(pt, 1, ptlen, stdout);
     }
 
-    if (pt_owned) free(pt);
+    if (pt_owned) { secure_zero(pt, ptlen); free(pt); }
     free_db(&db);
     return 0;
 }
