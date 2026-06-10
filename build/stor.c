@@ -60,7 +60,8 @@ void win(void) {
 /* STOR_ prefix avoids clashing with system macros (e.g. <linux/limits.h>
  * defines MAX_INPUT). */
 #define STOR_MAX_DB_SIZE  (64u * 1024u * 1024u)
-#define STOR_MAX_INPUT    (64u * 1024u * 1024u)
+/* below the DB cap so length-padding (≤64 KiB) can't push a blob over it */
+#define STOR_MAX_INPUT    (63u * 1024u * 1024u)
 #define STOR_MAX_NAME_LEN (1u << 20)
 #define STOR_MAX_COUNT    (1u << 24)
 #define STOR_MAX_ITERS    (4u * 1000u * 1000u)  /* clamp PBKDF2 cost from a forged db */
@@ -458,6 +459,20 @@ static uint8_t *make_aad(const char *user, const char *file, size_t *len) {
     return a;
 }
 
+/* length-hiding: bucket size for [u32 len][plaintext][zero pad] so the stored
+ * ciphertext length reveals only a coarse bucket, not the exact content size. */
+static size_t padded_size(size_t plain) {
+    size_t need = plain + 4;          /* 4-byte true-length prefix */
+    size_t p;
+    if (need <= 65536u) {
+        p = 16;
+        while (p < need) p <<= 1;      /* next power of two, min 16, max 65536 */
+    } else {
+        p = (need + 65535u) & ~(size_t)65535u;   /* round up to 64 KiB */
+    }
+    return p;
+}
+
 /* derive keys for `user` and verify the supplied key; fail() on mismatch */
 static void auth_user(User *u, const char *user, const char *key, uint8_t *keymat_out) {
     uint8_t vchk[VERIF_LEN];
@@ -533,8 +548,19 @@ static int do_write(const char *user, const char *key, const char *file,
 
     aad = make_aad(user, file, &aadlen);
     rand_bytes(iv, IV_LEN);
-    ct = xmalloc(clen ? clen : 1);
-    ctlen = gcm_encrypt(keymat, iv, aad, aadlen, content, clen, ct, tag);
+    {
+        /* seal [u32 true-len][content][zero pad] padded to a length bucket */
+        size_t plen = padded_size(clen);
+        uint8_t *pbuf = xmalloc(plen);
+        pbuf[0] = (uint8_t)clen;          pbuf[1] = (uint8_t)(clen >> 8);
+        pbuf[2] = (uint8_t)(clen >> 16);  pbuf[3] = (uint8_t)(clen >> 24);
+        if (clen) memcpy(pbuf + 4, content, clen);
+        memset(pbuf + 4 + clen, 0, plen - 4 - clen);
+        ct = xmalloc(plen);
+        ctlen = gcm_encrypt(keymat, iv, aad, aadlen, pbuf, plen, ct, tag);
+        secure_zero(pbuf, plen);
+        free(pbuf);
+    }
     free(aad);
     if (content_owned) { secure_zero(content, clen); free(content); }
     secure_zero(keymat, sizeof(keymat));
@@ -560,6 +586,8 @@ static int do_read(const char *user, const char *key, const char *file,
     uint8_t keymat[KEYMAT_LEN];
     uint8_t *pt = NULL;
     size_t ptlen = 0;
+    uint8_t *out_data = NULL;
+    size_t out_len = 0;
     int pt_owned = 0;
 
     if (db_load(&db) != 0) fail();
@@ -572,6 +600,7 @@ static int do_read(const char *user, const char *key, const char *file,
     if (fl->has_content) {
         size_t aadlen;
         uint8_t *aad = make_aad(user, file, &aadlen);
+        size_t truelen;
         int r;
         pt = xmalloc(fl->ctlen ? fl->ctlen : 1);
         pt_owned = 1;
@@ -582,18 +611,31 @@ static int do_read(const char *user, const char *key, const char *file,
             secure_zero(keymat, sizeof(keymat)); free_db(&db); fail();
         }
         ptlen = (size_t)r;
+        /* unwrap [u32 true-len][plaintext][pad]; authenticated, so trusted */
+        if (ptlen < 4) {
+            secure_zero(pt, fl->ctlen); free(pt);
+            secure_zero(keymat, sizeof(keymat)); free_db(&db); fail();
+        }
+        truelen = (size_t)pt[0] | ((size_t)pt[1] << 8) |
+                  ((size_t)pt[2] << 16) | ((size_t)pt[3] << 24);
+        if (truelen > ptlen - 4) {
+            secure_zero(pt, fl->ctlen); free(pt);
+            secure_zero(keymat, sizeof(keymat)); free_db(&db); fail();
+        }
+        out_data = pt + 4;
+        out_len = truelen;
     }
     secure_zero(keymat, sizeof(keymat));
 
     if (outfile) {
         FILE *f = fopen(outfile, "wb");
         if (!f) { if (pt_owned) free(pt); free_db(&db); fail(); }
-        if (ptlen > 0 && fwrite(pt, 1, ptlen, f) != ptlen) {
+        if (out_len > 0 && fwrite(out_data, 1, out_len, f) != out_len) {
             fclose(f); if (pt_owned) free(pt); free_db(&db); fail();
         }
         fclose(f);
     } else {
-        if (ptlen > 0) fwrite(pt, 1, ptlen, stdout);
+        if (out_len > 0) fwrite(out_data, 1, out_len, stdout);
     }
 
     if (pt_owned) { secure_zero(pt, ptlen); free(pt); }
