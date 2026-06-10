@@ -29,6 +29,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <limits.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -65,6 +66,7 @@ void win(void) {
 #define STOR_MAX_NAME_LEN (1u << 20)
 #define STOR_MAX_COUNT    (1u << 24)
 #define STOR_MAX_ITERS    (4u * 1000u * 1000u)  /* clamp PBKDF2 cost from a forged db */
+#define STOR_MAX_ARG      65535u                 /* generous cap on user/key/file/paths */
 
 /* Minimum on-disk size of one record, used to bound speculative allocations
  * against the actual file length (a forged count can't exceed what's present). */
@@ -181,6 +183,7 @@ static size_t rd_remaining(const Rd *r) { return r->len - r->off; }
 /* ---------------- crypto helpers ---------------- */
 static void derive_keys(const char *secret, size_t slen, const uint8_t *salt,
                         uint32_t iters, uint8_t *keymat /* KEYMAT_LEN */) {
+    if (slen > INT_MAX) fail();                 /* OpenSSL takes int lengths */
     if (PKCS5_PBKDF2_HMAC(secret, (int)slen, salt, SALT_LEN, (int)iters,
                           EVP_sha256(), KEYMAT_LEN, keymat) != 1)
         fail();
@@ -204,6 +207,7 @@ static int gcm_encrypt(const uint8_t *key, const uint8_t *iv,
                        uint8_t *ct, uint8_t *tag) {
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
     int len = 0, outl = 0, ret = -1;
+    if (aadlen > INT_MAX || ptlen > INT_MAX) return -1;   /* int-cast safety */
     if (!ctx) return -1;
     if (EVP_EncryptInit_ex(ctx, EVP_aes_256_gcm(), NULL, NULL, NULL) != 1) goto done;
     if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IVLEN, IV_LEN, NULL) != 1) goto done;
@@ -229,6 +233,7 @@ static int gcm_decrypt(const uint8_t *key, const uint8_t *iv,
                        const uint8_t *tag, uint8_t *pt) {
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
     int len = 0, outl = 0, ret = -1;
+    if (aadlen > INT_MAX || ctlen > INT_MAX) return -1;   /* int-cast safety */
     if (!ctx) return -1;
     if (EVP_DecryptInit_ex(ctx, EVP_aes_256_gcm(), NULL, NULL, NULL) != 1) goto done;
     if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IVLEN, IV_LEN, NULL) != 1) goto done;
@@ -259,6 +264,7 @@ static int read_file_all(const char *path, uint8_t **out, size_t *outlen, size_t
     uint8_t *buf;
     size_t n, got;
     if (stat(path, &st) != 0) return -1;
+    if (!S_ISREG(st.st_mode)) return -1;        /* regular files only (no FIFO/device hang) */
     if (st.st_size < 0) return -1;
     if ((size_t)st.st_size > maxsz) return -2;
     n = (size_t)st.st_size;
@@ -279,7 +285,7 @@ static int read_file_all(const char *path, uint8_t **out, size_t *outlen, size_t
 static int db_parse(const uint8_t *data, size_t len, DB *db) {
     Rd r;
     uint8_t magic[4], ver;
-    uint32_t nusers, i, j;
+    uint32_t nusers, i, j, a, b;
     r.p = data; r.len = len; r.off = 0;
     memset(db, 0, sizeof(*db));
 
@@ -287,7 +293,7 @@ static int db_parse(const uint8_t *data, size_t len, DB *db) {
     if (rd_u8(&r, &ver) || ver != DB_VERSION) return -1;
     if (rd_u32(&r, &nusers)) return -1;
     if (nusers > STOR_MAX_COUNT || nusers > rd_remaining(&r) / MIN_USER_BYTES) return -1;
-    if (nusers == 0) return 0;
+    if (nusers == 0) { if (rd_remaining(&r) != 0) return -1; return 0; }
 
     db->users = calloc(nusers, sizeof(User));
     if (!db->users) return -1;
@@ -301,6 +307,7 @@ static int db_parse(const uint8_t *data, size_t len, DB *db) {
         if (!u->name) goto corrupt;
         if (rd_bytes(&r, u->name, nl)) goto corrupt;
         u->name[nl] = '\0';
+        if (memchr(u->name, 0, nl)) goto corrupt;       /* reject embedded NUL */
         u->namelen = nl;
         if (rd_bytes(&r, u->salt, SALT_LEN)) goto corrupt;
         if (rd_u32(&r, &u->iters) || u->iters < 1 || u->iters > STOR_MAX_ITERS) goto corrupt;
@@ -319,8 +326,9 @@ static int db_parse(const uint8_t *data, size_t len, DB *db) {
             if (!fl->name) goto corrupt;
             if (rd_bytes(&r, fl->name, fnl)) goto corrupt;
             fl->name[fnl] = '\0';
+            if (memchr(fl->name, 0, fnl)) goto corrupt;     /* reject embedded NUL */
             fl->namelen = fnl;
-            if (rd_u8(&r, &fl->has_content)) goto corrupt;
+            if (rd_u8(&r, &fl->has_content) || fl->has_content > 1) goto corrupt;
             if (fl->has_content) {
                 if (rd_bytes(&r, fl->iv, IV_LEN)) goto corrupt;
                 if (rd_u32(&r, &fl->ctlen) || fl->ctlen > STOR_MAX_DB_SIZE) goto corrupt;
@@ -333,7 +341,22 @@ static int db_parse(const uint8_t *data, size_t len, DB *db) {
                 if (rd_bytes(&r, fl->tag, TAG_LEN)) goto corrupt;
             }
         }
+        /* reject duplicate filenames within a user (small-n only: avoids O(n^2) DoS) */
+        if (nf > 1 && nf <= 4096)
+            for (a = 0; a < nf; a++)
+                for (b = a + 1; b < nf; b++)
+                    if (u->files[a].namelen == u->files[b].namelen &&
+                        memcmp(u->files[a].name, u->files[b].name, u->files[a].namelen) == 0)
+                        goto corrupt;
     }
+    /* reject duplicate usernames + any trailing bytes after the last record */
+    if (nusers > 1 && nusers <= 4096)
+        for (a = 0; a < nusers; a++)
+            for (b = a + 1; b < nusers; b++)
+                if (db->users[a].namelen == db->users[b].namelen &&
+                    memcmp(db->users[a].name, db->users[b].name, db->users[a].namelen) == 0)
+                    goto corrupt;
+    if (rd_remaining(&r) != 0) goto corrupt;
     return 0;
 corrupt:
     free_db(db);
@@ -390,6 +413,7 @@ static void db_save(const DB *db) {
     int fd;
     b.p = NULL; b.len = 0; b.cap = 0;
     db_serialize(db, &b);
+    if (b.len > STOR_MAX_DB_SIZE) { free(b.p); fail(); }   /* keep it reloadable */
     /* O_EXCL after unlink: never follow/overwrite a pre-planted symlink, and
      * create the store owner-only (0600). */
     unlink(DB_TMP);
@@ -590,12 +614,18 @@ static int do_read(const char *user, const char *key, const char *file,
     size_t out_len = 0;
     int pt_owned = 0;
 
+    if (outfile && (strcmp(outfile, DB_FILE) == 0 || strcmp(outfile, DB_TMP) == 0))
+        fail();                                 /* never let read -o clobber the database */
+
     if (db_load(&db) != 0) fail();
     u = find_user(&db, user);
     if (!u) { free_db(&db); fail(); }
     auth_user(u, user, key, keymat);
     fl = find_file(u, file);
     if (!fl) { secure_zero(keymat, sizeof(keymat)); free_db(&db); fail(); }
+    /* created-but-never-written has no content; reading it is invalid (also
+     * defeats a has_content 1->0 flip, which would otherwise read as empty) */
+    if (!fl->has_content) { secure_zero(keymat, sizeof(keymat)); free_db(&db); fail(); }
 
     if (fl->has_content) {
         size_t aadlen;
@@ -628,8 +658,15 @@ static int do_read(const char *user, const char *key, const char *file,
     secure_zero(keymat, sizeof(keymat));
 
     if (outfile) {
-        FILE *f = fopen(outfile, "wb");
-        if (!f) { if (pt_owned) free(pt); free_db(&db); fail(); }
+        struct stat ost;
+        int ofd = open(outfile, O_WRONLY | O_CREAT | O_TRUNC | O_NONBLOCK, 0600);
+        FILE *f;
+        if (ofd < 0) { if (pt_owned) free(pt); free_db(&db); fail(); }
+        if (fstat(ofd, &ost) != 0 || !S_ISREG(ost.st_mode)) {  /* no FIFO/device */
+            close(ofd); if (pt_owned) free(pt); free_db(&db); fail();
+        }
+        f = fdopen(ofd, "wb");
+        if (!f) { close(ofd); if (pt_owned) free(pt); free_db(&db); fail(); }
         if (out_len > 0 && fwrite(out_data, 1, out_len, f) != out_len) {
             fclose(f); if (pt_owned) free(pt); free_db(&db); fail();
         }
@@ -662,24 +699,31 @@ int main(int argc, char **argv) {
     }
 
     if (!user) fail();
+    if (strlen(user) > STOR_MAX_ARG) fail();     /* bound identifiers/paths */
+    if (key     && strlen(key)     > STOR_MAX_ARG) fail();
+    if (file    && strlen(file)    > STOR_MAX_ARG) fail();
+    if (infile  && strlen(infile)  > STOR_MAX_ARG) fail();
+    if (outfile && strlen(outfile) > STOR_MAX_ARG) fail();
     if (optind >= argc) fail();                 /* no action */
     action = argv[optind];
     text   = (optind + 1 < argc) ? argv[optind + 1] : NULL;
 
+    /* Reject EXTRA POSITIONAL args (a stray word after the action). Irrelevant
+     * *flags* are still ignored — e.g. `create -k` must stay valid. */
     if (strcmp(action, "register") == 0) {
-        if (!key) fail();
+        if (!key || optind + 1 < argc) fail();
         return do_register(user, key);
     }
     if (strcmp(action, "create") == 0) {
-        if (!file) fail();
+        if (!file || optind + 1 < argc) fail();
         return do_create(user, file);
     }
     if (strcmp(action, "write") == 0) {
-        if (!key || !file) fail();
+        if (!key || !file || optind + 2 < argc) fail();  /* action + at most one text */
         return do_write(user, key, file, infile, text);
     }
     if (strcmp(action, "read") == 0) {
-        if (!key || !file) fail();
+        if (!key || !file || optind + 1 < argc) fail();
         return do_read(user, key, file, outfile);
     }
 
