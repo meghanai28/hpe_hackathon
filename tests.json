@@ -1,0 +1,152 @@
+[
+  {
+    "name": "register_and_create",
+    "description": "Register user and create a file — both should exit 0",
+    "commands": [
+      {"program": "stor", "args": ["-u", "alice", "-k", "secret123", "register"]},
+      {"program": "stor", "args": ["-u", "alice", "-f", "notes", "create"]}
+    ],
+    "expected": [
+      {"exit": 0},
+      {"exit": 0}
+    ]
+  },
+  {
+    "name": "write_and_read",
+    "description": "Write content to a file and read it back — read should return the written content",
+    "commands": [
+      {"program": "stor", "args": ["-u", "alice", "-k", "secret123", "register"]},
+      {"program": "stor", "args": ["-u", "alice", "-f", "notes", "create"]},
+      {"program": "stor", "args": ["-u", "alice", "-k", "secret123", "-f", "notes", "write", "hello world"]},
+      {"program": "stor", "args": ["-u", "alice", "-k", "secret123", "-f", "notes", "read"]}
+    ],
+    "expected": [
+      {"exit": 0},
+      {"exit": 0},
+      {"exit": 0},
+      {"stdout": "hello world", "exit": 0}
+    ]
+  },
+  {
+    "name": "last_occurrence_wins",
+    "description": "When -k is specified twice the last value takes effect",
+    "commands": [
+      {"program": "stor", "args": ["-u", "alice", "-k", "wrong", "-k", "secret123", "register"]},
+      {"program": "stor", "args": ["-u", "alice", "-f", "notes", "create"]},
+      {"program": "stor", "args": ["-u", "alice", "-k", "secret123", "-f", "notes", "write", "test"]},
+      {"program": "stor", "args": ["-u", "alice", "-k", "secret123", "-f", "notes", "read"]}
+    ],
+    "expected": [
+      {"exit": 0},
+      {"exit": 0},
+      {"exit": 0},
+      {"stdout": "test", "exit": 0}
+    ]
+  },
+  {
+    "name": "wrong_key_rejected",
+    "description": "Read with the wrong key should fail (print 'invalid', exit 255)",
+    "commands": [
+      {"program": "stor", "args": ["-u", "alice", "-k", "secret123", "register"]},
+      {"program": "stor", "args": ["-u", "alice", "-f", "notes", "create"]},
+      {"program": "stor", "args": ["-u", "alice", "-k", "secret123", "-f", "notes", "write", "private"]},
+      {"program": "stor", "args": ["-u", "alice", "-k", "WRONGKEY", "-f", "notes", "read"]}
+    ],
+    "expected": [
+      {"exit": 0},
+      {"exit": 0},
+      {"exit": 0},
+      {"stdout": "invalid", "exit": 255}
+    ]
+  },
+  {
+    "name": "create_no_key_required",
+    "description": "Create does not require -k; passing it is ignored",
+    "commands": [
+      {"program": "stor", "args": ["-u", "alice", "-k", "secret123", "register"]},
+      {"program": "stor", "args": ["-u", "alice", "-f", "nokey", "create"]},
+      {"program": "stor", "args": ["-u", "alice", "-k", "secret123", "-f", "nokey", "write", "ok"]},
+      {"program": "stor", "args": ["-u", "alice", "-k", "secret123", "-f", "nokey", "read"]}
+    ],
+    "expected": [
+      {"exit": 0},
+      {"exit": 0},
+      {"exit": 0},
+      {"stdout": "ok", "exit": 0}
+    ]
+  },
+  {
+    "name": "missing_username_invalid",
+    "description": "Omitting -u must print 'invalid' and exit 255",
+    "commands": [
+      {"program": "stor", "args": ["-k", "secret123", "register"]}
+    ],
+    "expected": [
+      {"stdout": "invalid", "exit": 255}
+    ]
+  },
+  {
+    "name": "missing_action_invalid",
+    "description": "Calling stor with only -u and no action must print 'invalid' and exit 255",
+    "commands": [
+      {"program": "stor", "args": ["-u", "alice"]}
+    ],
+    "expected": [
+      {"stdout": "invalid", "exit": 255}
+    ]
+  },
+  {
+    "name": "multi_user_isolation",
+    "description": "Two different users cannot read each other's files without the correct key",
+    "commands": [
+      {"program": "stor", "args": ["-u", "alice", "-k", "alicekey", "register"]},
+      {"program": "stor", "args": ["-u", "bob",   "-k", "bobkey",   "register"]},
+      {"program": "stor", "args": ["-u", "alice", "-f", "secret", "create"]},
+      {"program": "stor", "args": ["-u", "alice", "-k", "alicekey", "-f", "secret", "write", "alice-data"]},
+      {"program": "stor", "args": ["-u", "alice", "-k", "bobkey",   "-f", "secret", "read"]}
+    ],
+    "expected": [
+      {"exit": 0},
+      {"exit": 0},
+      {"exit": 0},
+      {"exit": 0},
+      {"stdout": "invalid", "exit": 255}
+    ]
+  },
+  {
+    "name": "write_from_file",
+    "description": "Write using -i inputfile; read should return same content",
+    "commands": [
+      {"program": "stor", "args": ["-u", "alice", "-k", "secret123", "register"]},
+      {"program": "stor", "args": ["-u", "alice", "-f", "doc", "create"]},
+      {"program": "sh",   "args": ["-c", "echo 'file content' > /tmp/grader_input.txt"]},
+      {"program": "stor", "args": ["-u", "alice", "-k", "secret123", "-f", "doc", "-i", "/tmp/grader_input.txt", "write"]},
+      {"program": "stor", "args": ["-u", "alice", "-k", "secret123", "-f", "doc", "read"]}
+    ],
+    "expected": [
+      {"exit": 0},
+      {"exit": 0},
+      {"exit": 0},
+      {"exit": 0},
+      {"stdout": "file content", "exit": 0}
+    ]
+  },
+  {
+    "name": "write_out_file",
+    "description": "Read using -o outputfile; stdout should be empty, file should contain data",
+    "commands": [
+      {"program": "stor", "args": ["-u", "alice", "-k", "secret123", "register"]},
+      {"program": "stor", "args": ["-u", "alice", "-f", "doc", "create"]},
+      {"program": "stor", "args": ["-u", "alice", "-k", "secret123", "-f", "doc", "write", "output test"]},
+      {"program": "stor", "args": ["-u", "alice", "-k", "secret123", "-f", "doc", "-o", "/tmp/grader_out.txt", "read"]},
+      {"program": "sh",   "args": ["-c", "cat /tmp/grader_out.txt"]}
+    ],
+    "expected": [
+      {"exit": 0},
+      {"exit": 0},
+      {"exit": 0},
+      {"exit": 0},
+      {"stdout": "output test", "exit": 0}
+    ]
+  }
+]

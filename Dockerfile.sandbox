@@ -1,0 +1,49 @@
+# BiBiFi Sandbox — Ubuntu 18.04 with all build dependencies
+#
+# Build:
+#   docker build -t bibifi-sandbox -f Dockerfile.sandbox .
+#
+# Run (interactive):
+#   docker run --rm -it -v $(pwd)/build:/connect bibifi-sandbox
+#
+# This drops you into a shell where /connect contains your build/ directory.
+# Run `make` to compile, then use the test commands from tests.json to verify.
+
+FROM ubuntu:18.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get dist-upgrade -y
+
+# Core build tools
+RUN apt-get install -y build-essential gcc make sudo
+
+# BiBiFi build dependencies
+RUN apt-get install -y \
+    openssl \
+    libprotobuf-c0-dev libprotobuf-dev libprotoc-dev protobuf-compiler \
+    clang cmake zlib1g-dev libcppunit-dev llvm \
+    libssl-dev libssh-dev \
+    libffi-dev libcrypto++-dev \
+    libmbedtls-dev \
+    libnacl-dev \
+    libsodium-dev \
+    uthash-dev libjansson-dev libgcrypt11-dev
+
+# 32-bit toolchain (contest requires -m32)
+RUN apt-get install -y gcc-multilib
+RUN dpkg --add-architecture i386
+RUN apt-get update
+RUN apt-get install -y libssl-dev:i386 libsodium-dev:i386
+
+# execstack (contest requires executable stack)
+RUN add-apt-repository universe && apt-get update && apt-get install -y execstack
+
+# Avoid entropy blocking in containers
+RUN rm /dev/random && ln -s /dev/urandom /dev/random
+
+RUN rm -rf /var/lib/apt/lists/*
+
+WORKDIR /connect
+
+ENTRYPOINT ["/bin/bash"]
