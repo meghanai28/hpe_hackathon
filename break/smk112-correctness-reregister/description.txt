@@ -1,0 +1,1 @@
+SMK-112 register never rejects an existing username. Re-registering alice overwrites her record (including wiping files) and returns exit 0 instead of printing invalid and exiting 255.

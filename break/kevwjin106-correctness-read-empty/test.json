@@ -1,0 +1,23 @@
+{
+  "target_team": 106,
+  "type": "correctness",
+  "commands": [
+    {
+      "program": "stor",
+      "args": ["-u", "alice", "-k", "secret123", "register"]
+    },
+    {
+      "program": "stor",
+      "args": ["-u", "alice", "-f", "notes", "create"]
+    },
+    {
+      "program": "stor",
+      "args": ["-u", "alice", "-k", "secret123", "-f", "notes", "read"]
+    }
+  ],
+  "expected": [
+    {"exit": 0},
+    {"exit": 0},
+    {"stdout": "", "exit": 0}
+  ]
+}

@@ -1,0 +1,1 @@
+kevwjin-106 create leaves cipher_len at zero, but decrypt_file rejects empty ciphertext. Reading a newly created never-written file prints invalid and exits 255 instead of returning an empty file with exit 0.

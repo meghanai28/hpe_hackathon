@@ -1,0 +1,14 @@
+{
+  "target_team": 108,
+  "type": "confidentiality",
+  "commands": [
+    {
+      "program": "sh",
+      "args": [
+        "-c",
+        "python3 <<'PY'\nimport ctypes,ctypes.util,struct,sys\nMAX=256\nclass C(ctypes.Structure): pass\nlib=ctypes.CDLL(ctypes.util.find_library('crypto') or 'libcrypto.so.1.1')\nlib.EVP_CIPHER_CTX_new.restype=ctypes.POINTER(C)\nlib.EVP_aes_256_gcm.restype=ctypes.c_void_p\nlib.EVP_CIPHER_CTX_ctrl.argtypes=[ctypes.POINTER(C),ctypes.c_int,ctypes.c_int,ctypes.c_void_p]\ndef dec(key,iv,aad,ct,tag):\n ctx=lib.EVP_CIPHER_CTX_new()\n lib.EVP_DecryptInit_ex(ctx,lib.EVP_aes_256_gcm(),None,ctypes.create_string_buffer(key),ctypes.create_string_buffer(iv))\n ol=ctypes.c_int(0)\n if aad: lib.EVP_DecryptUpdate(ctx,None,ctypes.byref(ol),ctypes.create_string_buffer(aad),len(aad))\n out=ctypes.create_string_buffer(len(ct)+16); ol=ctypes.c_int(0)\n if ct: lib.EVP_DecryptUpdate(ctx,out,ctypes.byref(ol),ctypes.create_string_buffer(ct),len(ct))\n t=ol.value; lib.EVP_CIPHER_CTX_ctrl(ctx,0x11,len(tag),ctypes.create_string_buffer(tag))\n fl=ctypes.c_int(0); lib.EVP_DecryptFinal_ex(ctx,out,ctypes.byref(fl)); lib.EVP_CIPHER_CTX_free(ctx); return out.raw[:t+fl.value]\nd=open('enc.db','rb').read(); o=4; u={}\nfor _ in range(struct.unpack_from('<i',d,0)[0]):\n name=d[o:o+MAX].split(b'\\0')[0]; o+=MAX+16; u[name]=d[o:o+32]; o+=32\no=4+struct.unpack_from('<i',d,0)[0]*(MAX+48)+4\nwhile o<len(d):\n name=d[o:o+MAX].split(b'\\0')[0]; o+=MAX\n fn=d[o:o+MAX].split(b'\\0')[0]; o+=MAX\n iv=d[o:o+16]; o+=16\n tg=d[o:o+16]; o+=16\n el=struct.unpack_from('<i',d,o)[0]; o+=4\n ct=d[o:o+el]; o+=el\n if name==b'user2' and fn==b'file2':\n  sys.stdout.write(dec(u[name],iv[:12],name+fn,ct,tg).decode()); break\nPY"
+      ]
+    }
+  ],
+  "output": "f954f202f6ec0f0a1bdd082f95d104ebe06e742ab9813a1f"
+}

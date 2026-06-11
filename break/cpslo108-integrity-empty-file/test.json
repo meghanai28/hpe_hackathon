@@ -1,0 +1,13 @@
+{
+  "target_team": 108,
+  "type": "integrity",
+  "commands": [
+    {
+      "program": "sh",
+      "args": [
+        "-c",
+        "python3 <<'PY'\nimport struct\nMAX=256\nd=open('enc.db','rb').read()\nuc=struct.unpack_from('<i',d,0)[0]\nue=4+uc*(MAX+16+32)\nfc=struct.unpack_from('<i',d,ue)[0]\no=ue+4\nrecs=[]\nfor _ in range(fc):\n u=d[o:o+MAX]; o+=MAX\n f=d[o:o+MAX]; o+=MAX\n iv=d[o:o+16]; o+=16\n tg=d[o:o+16]; o+=16\n el=struct.unpack_from('<i',d,o)[0]; o+=4\n ct=d[o:o+el]; o+=el\n recs.append((u,f,iv,tg,el,ct))\nout=bytearray(struct.pack('<i',uc)+d[4:ue]+struct.pack('<i',fc))\nfor u,f,iv,tg,el,ct in recs:\n if u.split(b'\\0')[0]==b'user1' and f.split(b'\\0')[0]==b'file1': el=0; ct=b''\n out+=u+f+iv+tg+struct.pack('<i',el)+ct\nopen('enc.db','wb').write(out)\nPY"
+      ]
+    }
+  ]
+}
