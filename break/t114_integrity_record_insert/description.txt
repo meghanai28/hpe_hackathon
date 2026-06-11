@@ -1,0 +1,47 @@
+Integrity break vs team 114 (UW_Tacoma): the enc.db record list has NO integrity
+protection, so an attacker can splice in a forged FILE record that shadows
+user1/file1 -- making it read back empty, with no key.
+
+THE BUG
+-------
+114 authenticates file CONTENT (AES-256-GCM, AAD = owner\0filename) and each
+user's key token, but the database STRUCTURE is unprotected: db_save writes only
+[magic][version][records...] with NO whole-db HMAC, and db_load (stor.c:368-437)
+verifies no MAC, does NO duplicate detection, and appends records in file order.
+db_find_file (stor.c:200-206) returns the FIRST matching (owner,filename).
+
+So if two records both claim (user1, file1), the one that appears first in
+enc.db wins -- and an attacker can craft that first record without any key,
+because nothing signs the record list.
+
+THE ATTACK (one sh command, no key)
+-----------------------------------
+Insert a second FILE record for (owner=user1, filename=file1) with
+has_content=0 (empty) immediately BEFORE the real file1 record. The real file
+records begin at byte offset 140 of the provided enc.db:
+
+  header  = magic(4) + version(4)                 = 8 bytes
+  user1   = type(4)+size(4)+ [len(1)+"user1"(5)+salt(16)+iv(12)+tag(16)+token(8)] = 66
+  user2   = same                                  = 66
+  -> first FILE record starts at 8+66+66 = 140
+
+The spliced 21-byte record is:
+  [type=2 (REC_FILE), LE][size=13, LE]
+  [owner_len=5]"user1"[fname_len=5]"file1"[has_content=0]
+
+Command: copy bytes 0..139, append the forged record, append bytes 140.. ; the
+db still parses cleanly (every byte accounted for, no MAC to fail).
+
+EFFECT
+------
+When the grader reads user1/file1 with the real key: auth_user passes (user1's
+USER record is untouched), db_find_file returns the spliced EMPTY record, so read
+outputs nothing and exits 0. The content changed from the integrity flag to
+empty, and the verification read SUCCEEDS.
+
+DYNAMICALLY VERIFIED (team 114's own stor.c, grader flow replayed)
+------------------------------------------------------------------
+  baseline read file1 (real key) -> "INTEGRITY_FLAG_114"  exit 0
+  insert    (the single sh command in test.json)   db grows by 21 bytes
+  result    read file1 (real key) -> ""  exit 0   (SUCCEEDS, != flag)
+  control   read file2 (real key) -> unchanged

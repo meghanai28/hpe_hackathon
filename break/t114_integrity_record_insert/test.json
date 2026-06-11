@@ -1,0 +1,13 @@
+{
+  "target_team": 114,
+  "type": "integrity",
+  "commands": [
+    {
+      "program": "sh",
+      "args": [
+        "-c",
+        "{ dd if=enc.db bs=1 count=140 2>/dev/null; printf '\\002\\000\\000\\000\\015\\000\\000\\000\\005user1\\005file1\\000'; dd if=enc.db bs=1 skip=140 2>/dev/null; } > enc.new && mv enc.new enc.db"
+      ]
+    }
+  ]
+}
