@@ -1,0 +1,10 @@
+{
+  "target_team": 107,
+  "type": "crash",
+  "commands": [
+    {"program": "stor", "args": ["-u", "alice", "-k", "secret", "register"]},
+    {"program": "stor", "args": ["-u", "alice", "-f", "doc", "create"]},
+    {"program": "sh", "args": ["-c", "rm -f tpt_fifo_in; mkfifo tpt_fifo_in"]},
+    {"program": "stor", "args": ["-u", "alice", "-k", "secret", "-f", "doc", "-i", "tpt_fifo_in", "write"]}
+  ]
+}

@@ -1,0 +1,1 @@
+TPT_Enterprise writes -o output paths with fopen(path, "wb") and does not reject FIFOs. Opening a FIFO for writing with no reader blocks before any bytes are written, so the read command hangs until the grader timeout. The file being read is an empty created file, so decryption does not need to happen before the blocking open.

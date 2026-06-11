@@ -1,0 +1,13 @@
+{
+  "target_team": 107,
+  "type": "integrity",
+  "commands": [
+    {
+      "program": "sh",
+      "args": [
+        "-c",
+        "awk 'BEGIN{print \"STOR3\"} /^U /{print} /^F /{if($2==\"7573657231\" && $3==\"66696c6531\") print \"F 7573657231 66696c6531 0 - - -\"; else print}' enc.db > enc.new && mv enc.new enc.db"
+      ]
+    }
+  ]
+}

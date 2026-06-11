@@ -1,0 +1,1 @@
+TPT_Enterprise reads -i input paths with fopen(path, "rb") and then fseek/ftell. It does not stat the input path or reject FIFOs. Opening a FIFO for reading with no writer blocks, so the write command hangs until the grader timeout, which counts as a crash/DoS break.
