@@ -1,0 +1,4 @@
+The parser treats any argument equal to register/create/write/read as a command, 
+even when it appears in the data position for a write. 
+Therefore trying to store the literal file contents "read" is rejected as if two commands were supplied. 
+A correct file store should allow arbitrary text contents, including words that happen to match command names.

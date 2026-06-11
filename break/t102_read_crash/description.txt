@@ -1,0 +1,3 @@
+The read-to-output path calls write_whole_file_new(), 
+which first checks whether the output path exists by opening it with fopen(path, "rb"). 
+If that path is a FIFO with no writer, this existence check blocks indefinitely. 

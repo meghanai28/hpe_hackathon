@@ -1,0 +1,2 @@
+The write path opens the -i input file with fopen(path, "rb") and has no protection against special files.
+If the input path is a FIFO with no writer, fopen blocks indefinitely before any read occurs.

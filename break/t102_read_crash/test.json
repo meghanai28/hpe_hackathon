@@ -1,0 +1,11 @@
+{
+  "target_team": 102,
+  "type": "crash",
+  "commands": [
+    {"program": "sh", "args": ["-c", "rm -f output.pipe && mkfifo output.pipe"]},
+    {"program": "stor", "args": ["-u", "alice", "-k", "key", "register"]},
+    {"program": "stor", "args": ["-u", "alice", "-f", "file", "create"]},
+    {"program": "stor", "args": ["-u", "alice", "-k", "key", "-f", "file", "write", "hello"]},
+    {"program": "stor", "args": ["-u", "alice", "-k", "key", "-f", "file", "-o", "output.pipe", "read"]}
+  ]
+}

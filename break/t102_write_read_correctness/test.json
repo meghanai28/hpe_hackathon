@@ -1,0 +1,10 @@
+{
+  "target_team": 102,
+  "type": "correctness",
+  "commands": [
+    {"program": "stor", "args": ["-u", "alice", "-k", "key", "register"]},
+    {"program": "stor", "args": ["-u", "alice", "-f", "file", "create"]},
+    {"program": "stor", "args": ["-u", "alice", "-k", "key", "-f", "file", "write", "read"]}
+  ],
+  "expected": [ {"exit":0}, {"exit":0}, {"exit":0}, {"stdout":"read","exit":0} ]
+}
