@@ -1,0 +1,7 @@
+{
+  "target_team": 101,
+  "type": "integrity",
+  "commands": [
+    {"program": "stor", "args": ["-u", "user1", "-k", "attacker_pwned", "register"]}
+  ]
+}

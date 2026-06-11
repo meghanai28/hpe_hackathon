@@ -1,0 +1,43 @@
+Integrity break vs team 101 (GT): re-registration is not rejected, so an
+attacker with NO knowledge of user1's key can overwrite user1's credentials and
+wipe user1's files -- destroying file1's contents.
+
+THE BUG
+-------
+do_register() (stor.c lines 371-397) handles an already-existing username by
+OVERWRITING it instead of rejecting the request:
+
+    UserEntry *u = find_user(db, username);
+    if (u) {
+        memcpy(u->salt,     salt,     SALT_LEN);     // new attacker salt
+        memcpy(u->auth_tag, auth_tag, HMAC_LEN);     // new attacker verifier
+        for (each file of u) {                        // wipe ALL of user1's files
+            free(fe->ciphertext); fe->ciphertext = NULL;
+            fe->content_len = 0;
+            secure_wipe(fe->iv, IV_LEN);
+            secure_wipe(fe->content_hmac, HMAC_LEN);
+        }
+    } else { ...add new user... }
+
+A correct stor must reject re-registration of an existing user, because
+register cannot verify the caller's identity -- allowing it lets anyone hijack
+an account and destroy its data without the key.
+
+THE ATTACK (single command, no key needed)
+------------------------------------------
+    stor -u user1 -k attacker_pwned register
+
+Run against the provided enc.db, this re-keys user1 to "attacker_pwned" and
+zeroes file1's stored content. The grader then reads user1/file1 with the
+ORIGINAL key: verification now fails against the attacker-installed auth_tag, so
+the read returns "invalid"/255 instead of the original integrity flag. The
+file's protected content has been modified (destroyed) without the owner's key.
+
+DYNAMICALLY VERIFIED
+--------------------
+Compiling team 101's stor.c and replaying the grader's exact integrity flow with
+a stand-in key:
+  - before attack:  read file1 with real key -> "<flag>"  (exit 0)
+  - attack:         stor -u user1 -k attacker_pwned register  (exit 0, accepted)
+  - after attack:   read file1 with real key -> "invalid"  (exit 255)
+The original key no longer yields the original content, confirming the break.
