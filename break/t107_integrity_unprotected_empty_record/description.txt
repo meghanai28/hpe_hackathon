@@ -1,5 +1,0 @@
-TPT_Enterprise-107 authenticates file contents with AES-GCM only when the file record is marked protected. The database parser also accepts an unprotected file record with length 0, represented as:
-
-F <owner_hex> <name_hex> 0 - - -
-
-This break rewrites the existing user1/file1 record in enc.db to that valid unprotected empty-file form while preserving the user1 registration record. When the grader rereads user1/file1 with the real key, verify_user_key still succeeds, find_file still resolves user1/file1, and decrypt_file returns success for the unprotected zero-length record. The recovered contents are now empty instead of the original integrity flag, so user1/file1 has been modified without knowing the key.

@@ -1,0 +1,18 @@
+Crash (timeout) break vs team 108: read -o to a reader-less named pipe (FIFO)
+blocks forever, exceeding the 60s limit.
+
+THE BUG
+-------
+The -o output path opens the target with a blocking open (fopen(outfile,"wb") or
+open(...,O_WRONLY)) and no S_ISREG / O_NONBLOCK guard. Opening a FIFO for
+write-only blocks until a reader appears; with none, stor hangs until killed.
+
+THE ATTACK (fresh database)
+---------------------------
+  1. register alice / create doc / write hello
+  2. sh: mkfifo crash_fifo            (named pipe, no reader)
+  3. read -o crash_fifo               (blocks in open() forever)
+
+DYNAMICALLY VERIFIED against this team own stor.c: the read command did not
+return and was killed by an 8-second test timeout (exit 124). Under the grader
+60s limit this is a timeout/crash.

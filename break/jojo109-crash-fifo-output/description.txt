@@ -1,0 +1,17 @@
+Crash (timeout) break vs team 109 (jojo): read -o to a reader-less named pipe
+(FIFO) blocks forever in the output open(), exceeding the 60s limit.
+
+THE BUG
+-------
+The -o output path opens the target with a blocking open and no S_ISREG /
+O_NONBLOCK guard, so a reader-less FIFO blocks until the grader kills it.
+
+THE ATTACK (fresh database)
+---------------------------
+  1. register alice / create doc / write hello
+  2. sh: mkfifo crash_fifo
+  3. read -o crash_fifo   (blocks forever)
+
+DYNAMICALLY VERIFIED against team 109 multi-file stor build: the read command did
+not return and was killed by an 8-second test timeout (exit 124). Under the 60s
+grader limit this is a timeout/crash.
