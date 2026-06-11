@@ -1,4 +1,4 @@
-# BiBiFi Starter Package — `stor` (Secure File Store)
+/# BiBiFi Starter Package — `stor` (Secure File Store)
 
 ## What's in here
 

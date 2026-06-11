@@ -1,0 +1,38 @@
+Correctness break vs team 105 (0xwizards): the `-i <infile>` write path does
+not strip the trailing newline, contradicting the spec/oracle.
+
+THE BUG
+-------
+In do_write() the infile branch reads the input file verbatim:
+
+    if (infile) {
+        if (read_entire_file(infile, &content, &content_len, MAX_CONTENT) != 0)
+            return -1;
+        content_owned = 1;
+    }
+
+content_len includes the file's trailing newline, and that newline is then
+sealed into the ciphertext and returned by `read`. The reference implementation
+strips exactly one trailing '\n' from -i input. This is fixed by the published
+functionality test `write_from_file`, which writes via `echo 'file content'`
+(echo appends '\n') through -i and expects `read` to print "file content" with
+NO trailing newline -- i.e. the spec-correct behavior strips one trailing '\n'.
+
+HOW THE TEST PROVES IT
+----------------------
+1. register alice / create file "doc".
+2. `printf 'hello\n'` writes the 6 bytes  h e l l o \n  to /tmp/t105_nl.in.
+3. write "doc" from that file with -i.
+4. read "doc" into /tmp/t105_nl.out (-o), so stdout stays empty.
+5. `cat` the output file and append a literal sentinel "EOF".
+
+On the reference (oracle) the stored content is "hello" (trailing newline
+stripped), so step 5 prints:  helloEOF
+On team 105's stor the stored content is "hello\n" (newline kept), so step 5
+prints:  hello\nEOF
+
+The outputs differ, so the break is valid. The `expected` field declares the
+oracle's answer ("helloEOF"), which it agrees with. The sentinel "EOF" is
+appended after the content so the divergence is an INTERNAL newline rather than
+a trailing one -- it remains visible even if stdout comparison trims trailing
+whitespace.
