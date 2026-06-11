@@ -1,0 +1,13 @@
+{
+  "target_team": 102,
+  "type": "integrity",
+  "commands": [
+    {
+      "program": "python3",
+      "args": [
+        "-c",
+        "p='enc.db'; lines=open(p).read().splitlines(); i=next(j for j,l in enumerate(lines) if l.startswith('F ')); parts=lines[i].split(); lines[i]='F %s %s - - -' % (parts[1],parts[2]); open(p,'w').write('\\n'.join(lines)+'\\n')"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+The database format is unauthenticated.
+A file record with nonce/data/tag all set to '-' is treated as a valid empty file after the user authenticates.
+This command rewrites the first file record in the provided enc.db, which is user1/file1 per the package generation order, 
+to an empty unauthenticated record.
+When the grader rereads user1/file1 with the real key, the program returns an empty file instead of the original integrity flag.
