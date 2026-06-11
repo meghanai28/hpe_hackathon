@@ -1,0 +1,14 @@
+{
+  "target_team": 102,
+  "type": "crash",
+  "commands": [
+    {
+      "program": "sh",
+      "args": ["-c", "rm -f enc.db && mkfifo enc.db"]
+    },
+    {
+      "program": "stor",
+      "args": ["-u", "alice", "-k", "key", "register"]
+    }
+  ]
+}

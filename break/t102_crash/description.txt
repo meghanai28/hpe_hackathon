@@ -1,0 +1,2 @@
+The program always opens enc.db for reading during startup.
+If enc.db is a FIFO with no writer, fopen("enc.db", "r") blocks indefinitely before command dispatch.
