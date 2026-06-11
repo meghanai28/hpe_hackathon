@@ -1,0 +1,32 @@
+Integrity break vs team 105 (0xwizards): no database-wide MAC, and the per-file
+has_content flag is plaintext/unauthenticated. We empty user1/file1 (set
+has_content=0, drop its content) while preserving the user table AND user2/file2,
+so the real key still authenticates and reads file1 as empty.
+
+This is the pure-shell, offset-free variant: it parses the user table at runtime
+with od/dd (no python3), and keeps file_count=2 with user2/file2 intact, editing
+only file1's record.
+
+Wire format (little-endian; see stor.c db_serialize):
+  "STORDB01" | u32 ucount | USER* | u32 fcount | FILE*
+  USER = u32 name_len, name, salt[16], u32 verifier_len, verifier
+  FILE = u32 owner_len, owner, u32 name_len, name, u8 has_content,
+         if has_content: nonce[24], u32 ct_len, ct
+
+The sh script walks the user records to find the file table, locates file1's
+has_content byte, and rewrites the db as:
+  bytes[0:users_end]   (magic + ucount + both user records, UNCHANGED)
+  u32 fcount = 2
+  file1 owner+name (unchanged) + has_content = 0   (content dropped)
+  the original file2 record (unchanged)
+
+Grader reads user1/file1 with the real key: verify passes (user1 untouched),
+has_content==0 -> read returns empty, exit 0 -> content changed from the flag to
+empty, verification read SUCCEEDS.
+
+VERIFIED (vs team 105's ORIGINAL stor.c, run from this test.json under /bin/sh):
+  file1: baseline "FLAG105" -> after edit "" (exit 0)
+  file2: "CONF2" preserved
+NOTE: this exploits the unauthenticated db structure; if 105 has shipped a fix
+that authenticates the whole db (or rejects empty-content reads), this is
+defeated like the earlier structural variants.
