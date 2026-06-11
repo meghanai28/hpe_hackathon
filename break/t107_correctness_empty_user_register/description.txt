@@ -1,0 +1,1 @@
+TPT_Enterprise-107 checks only whether the -u option is present and whether its length is greater than 64. It never rejects a zero-length username, so `-u "" register` succeeds and stores an empty account name instead of treating the malformed username as invalid.

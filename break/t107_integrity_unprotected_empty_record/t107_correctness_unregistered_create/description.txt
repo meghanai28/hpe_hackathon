@@ -1,0 +1,1 @@
+The create path never checks that the owner exists in the user table. On a fresh database, `stor -u alice -f notes create` succeeds and writes an unowned file record even though alice has not registered. The store should reject operations for unknown users.
