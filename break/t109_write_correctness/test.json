@@ -1,5 +1,5 @@
 {
-  "target_team": "109",
+  "target_team": 109,
   "type": "correctness",
   "commands": [
     {"program": "stor", "args": ["-u", "alice", "-k", "secret", "register"]},
