@@ -1,0 +1,7 @@
+Correctness break: the parser accepts the same command word twice.
+
+A normal stor invocation has exactly one command word. This test invokes "register register" with a fresh username. 
+A conforming implementation should reject this as invalid and exit 255 after printing invalid.
+
+The target parser only rejects two distinct command words. If the same command appears twice, it keeps accepting the request. 
+As a result, "-u ... -k ... register register" succeeds and mutates enc.db instead of producing invalid.
