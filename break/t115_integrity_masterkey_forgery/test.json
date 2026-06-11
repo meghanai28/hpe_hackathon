@@ -1,0 +1,13 @@
+{
+  "target_team": 115,
+  "type": "integrity",
+  "commands": [
+    {
+      "program": "sh",
+      "args": [
+        "-c",
+        "HK=4b3a7f219c55e83db10644fa2e910c78d58b473ea9cc1f607724bd50083c926a; cp enc.db /tmp/o; dd if=/tmp/o of=/tmp/u1 bs=1 skip=12 count=73 2>/dev/null; printf 'ROTS\\001\\000\\000\\000\\001\\000\\000\\000' > /tmp/p; cat /tmp/u1 >> /tmp/p; printf '\\005\\000\\000\\000file1\\005\\000\\000\\000user1\\000\\000\\000\\000' >> /tmp/p; head -c 44 /dev/zero >> /tmp/p; openssl dgst -sha256 -mac HMAC -macopt hexkey:$HK -binary /tmp/p > /tmp/m; cat /tmp/p /tmp/m > enc.db"
+      ]
+    }
+  ]
+}

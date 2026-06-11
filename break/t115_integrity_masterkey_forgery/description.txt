@@ -1,0 +1,42 @@
+Integrity break vs team 115 (Husker_Bots): the whole-db integrity HMAC uses a
+FIXED key compiled into the binary, so an attacker can forge enc.db at will --
+including wiping user1/file1 -- and produce a valid HMAC without any user key.
+
+THE BUG
+-------
+enc.db ends with HMAC-SHA256 over the whole file, but the key is a hardcoded
+constant in the source/binary (stor.c:65-70):
+
+    static const unsigned char MASTER_HMAC_KEY[32] = { 0x4b,0x3a,0x7f,0x21, ... };
+
+Because the break package ships the source/binary, this key is public. The HMAC
+therefore provides zero protection against an attacker who knows it: any tampered
+db can be re-MAC'd and will pass db_load()'s integrity check.
+
+THE ATTACK (one sh command, no key)
+-----------------------------------
+We rebuild enc.db keeping user1's ORIGINAL key-hash + salt (the 73-byte user1
+record at offset 12 of the provided enc.db, so the real key still authenticates),
+but with file1 set to EMPTY (enc_len = 0). Then we recompute the trailing HMAC
+with the known MASTER_HMAC_KEY via `openssl dgst -mac HMAC -macopt hexkey:...`.
+
+Resulting forged db = header(num_users=1,num_files=1) + original user1 record +
+file1 record with empty content + valid HMAC. We discard user2/file2 (the grader
+only checks user1/file1 for integrity).
+
+When the grader reads user1/file1 with the real key: verify_key() passes (user1's
+hash is original), file1.enc_len == 0 -> read returns EMPTY and exit 0. The
+content changed from the integrity flag to empty, and the verification read
+SUCCEEDS (it does not error).
+
+Format used (little-endian; see stor.c db_save):
+  [MAGIC 4][num_users 4][num_files 4]
+  USER:  [name_len 4][name][key_hash 32][key_salt 32]
+  FILE:  [name_len 4][name][owner_len 4][owner][enc_len 4][content][nonce 12][salt 32]
+  [HMAC_SHA256 32]
+
+DYNAMICALLY VERIFIED (team 115's own stor.c, grader flow replayed)
+------------------------------------------------------------------
+  baseline  read file1 (real key) -> "INTEGRITY_FLAG_115"  exit 0
+  forge     (the single sh command in test.json)
+  result    read file1 (real key) -> ""  exit 0   (SUCCEEDS, != flag)
