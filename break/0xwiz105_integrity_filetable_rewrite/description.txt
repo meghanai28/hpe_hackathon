@@ -1,0 +1,42 @@
+Integrity break vs team 105 (0xwizards): enc.db has no database-wide MAC and the
+per-file `has_content` flag is plaintext/unauthenticated. We rewrite the file
+table to a single empty user1/file1 record while leaving the user table (and thus
+user1's verifier) untouched, so the real key still authenticates but reads empty.
+
+This is the offset-free version: it PARSES the user table from enc.db at runtime
+(python3) instead of assuming a fixed file-count offset, so it works regardless of
+the exact verifier-string length in the grader's database.
+
+THE BUG
+-------
+do_read only runs the AEAD tag check when has_content == 1; for has_content == 0
+it returns empty content. The has_content byte and the whole record structure are
+unauthenticated (no db-wide MAC), so a structurally-valid edit is accepted by
+db_parse.
+
+Wire format (little-endian; see stor.c db_serialize):
+  "STORDB01" | u32 ucount | USER* | u32 fcount | FILE*
+  USER = u32 name_len, name, salt[16], u32 verifier_len, verifier
+  FILE = u32 owner_len, owner, u32 name_len, name, u8 has_content,
+         if has_content: nonce[24], u32 ct_len, ct
+
+THE ATTACK (one sh command, no key)
+-----------------------------------
+python3 walks the user records (name_len, name, salt[16], verifier_len, verifier)
+to find users_end, then writes:
+  bytes[0:users_end]              # magic + ucount + both user records, UNCHANGED
+  u32 fcount = 1
+  u32 5,"user1" u32 5,"file1" u8 0  # one empty user1/file1 file record
+The user table is byte-for-byte preserved, so user1's Argon2 verifier still
+matches the real key.
+
+EFFECT
+------
+Grader reads user1/file1 with the real key: verify passes (user1 untouched),
+has_content==0 -> read prints nothing, exit 0. Content changed from the integrity
+flag to empty, and the verification read SUCCEEDS.
+
+DYNAMICALLY VERIFIED (team 105's own stor.c, run from this test.json under /bin/sh):
+  baseline read file1 (real key) -> "FLAG105"  exit 0
+  apply the sh command (python3 file-table rewrite)
+  result   read file1 (real key) -> ""  exit 0   (SUCCEEDS, != flag)
