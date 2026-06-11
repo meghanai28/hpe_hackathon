@@ -1,0 +1,29 @@
+Crash (timeout) break vs team 104 (sensodyne): read -o to a reader-less named
+pipe (FIFO) blocks forever, exceeding the 60s limit.
+
+THE BUG
+-------
+sensodyne validates the INPUT path (-i) with O_NOFOLLOW + an explicit S_ISREG
+check (stor.c ~line 883-887), but the OUTPUT path (-o) just does:
+
+    FILE *f = fopen(a.outfile, "wb");        /* ~line 947 */
+
+fopen("wb") opens with O_WRONLY|O_CREAT|O_TRUNC and no S_ISREG / O_NONBLOCK guard.
+Opening a FIFO for write-only blocks until some process opens it for reading. If
+-o points at a reader-less FIFO, open() never returns and stor hangs until the
+grader kills it at 60s. The only check on -o is same_file_as_db(), which a FIFO
+passes.
+
+THE ATTACK (fresh database)
+---------------------------
+  1. register alice / create "doc" / write "hello"   (a normal readable file)
+  2. sh: mkfifo sd_fifo                               (named pipe, no reader)
+  3. read -o sd_fifo                                  (blocks in fopen() forever)
+
+After deriving the key (Argon2id MODERATE) and decrypting, read reaches the
+output fopen() on the FIFO and blocks.
+
+DYNAMICALLY VERIFIED (team 104's own stor.c): the read command did not return and
+was killed by a 12-second test timeout (exit 124). Under the grader's 60s limit
+this is a timeout/crash. A correct implementation rejects non-regular -o targets
+or opens them O_NONBLOCK (exactly as sensodyne already does for -i).

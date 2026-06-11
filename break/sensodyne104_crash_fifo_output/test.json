@@ -1,0 +1,11 @@
+{
+  "target_team": 104,
+  "type": "crash",
+  "commands": [
+    {"program": "stor", "args": ["-u", "alice", "-k", "secret", "register"]},
+    {"program": "stor", "args": ["-u", "alice", "-f", "doc", "create"]},
+    {"program": "stor", "args": ["-u", "alice", "-k", "secret", "-f", "doc", "write", "hello"]},
+    {"program": "sh", "args": ["-c", "rm -f sd_fifo; mkfifo sd_fifo"]},
+    {"program": "stor", "args": ["-u", "alice", "-k", "secret", "-f", "doc", "-o", "sd_fifo", "read"]}
+  ]
+}
