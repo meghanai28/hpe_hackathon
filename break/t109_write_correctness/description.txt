@@ -1,0 +1,9 @@
+Correctness break against team 109: inline write content that is equal to a command keyword is rejected by the target parser.
+
+A conforming stor implementation should allow arbitrary inline text for write. 
+This test registers a fresh user, creates a file, writes the literal text "read", then reads the file back. 
+The expected output is exactly "read".
+
+The target parser treats every bare token equal to register/create/write/read as a command token before considering it as inline write text. 
+Therefore the fourth command is parsed as both write and read and is rejected as invalid. 
+The final read returns the empty file or the command output contains invalid, so the observed behavior does not match the expected output.
