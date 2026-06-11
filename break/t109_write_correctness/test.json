@@ -5,7 +5,7 @@
     {"program": "stor", "args": ["-u", "alice", "-k", "secret", "register"]},
     {"program": "stor", "args": ["-u", "alice", "-f", "file", "create"]},
     {"program": "stor", "args": ["-u", "alice", "-k", "secret", "-f", "file", "write", "read"]},
-    {"program": "stor", "args": ["-u", "alice", "-k", "secret", "-f", "file", "read"]},
+    {"program": "stor", "args": ["-u", "alice", "-k", "secret", "-f", "file", "read"]}
   ],
   "expected": {
     "stdout": "read",
