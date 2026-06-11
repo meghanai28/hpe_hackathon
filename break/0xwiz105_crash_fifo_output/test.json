@@ -1,0 +1,47 @@
+{
+  "target_team": 105,
+  "type": "crash",
+  "commands": [
+    {
+      "program": "stor",
+      "args": [
+        "-u",
+        "alice",
+        "-k",
+        "secret",
+        "register"
+      ]
+    },
+    {
+      "program": "stor",
+      "args": [
+        "-u",
+        "alice",
+        "-f",
+        "doc",
+        "create"
+      ]
+    },
+    {
+      "program": "sh",
+      "args": [
+        "-c",
+        "rm -f oxw_fifo; mkfifo oxw_fifo"
+      ]
+    },
+    {
+      "program": "stor",
+      "args": [
+        "-u",
+        "alice",
+        "-k",
+        "secret",
+        "-f",
+        "doc",
+        "-o",
+        "oxw_fifo",
+        "read"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+Crash (timeout) break vs team 105 (0xwizards): read -o to a reader-less named
+pipe (FIFO) blocks forever in open(), exceeding the 60s limit.
+
+THE BUG
+-------
+do_read()'s -o output path opens the target with a blocking open and no
+file-type guard (stor.c ~line 800):
+
+    fd = open(outfile, O_WRONLY | O_CREAT, 0600);
+
+There is no S_ISREG check and no O_NONBLOCK. Opening a FIFO for write-only blocks
+until another process opens it for reading. If -o points at a reader-less FIFO,
+open() never returns and stor hangs until the grader kills it at 60s (a correct
+implementation rejects non-regular -o targets or opens them O_NONBLOCK).
+
+THE ATTACK (fresh database)
+---------------------------
+  1. register alice / create "doc"        (so auth + lookup succeed)
+  2. sh: mkfifo oxw_fifo                    (named pipe, no reader)
+  3. read -o oxw_fifo                       (blocks in open(O_WRONLY) forever)
+
+do_read reaches the -o open() before printing anything, so it hangs regardless of
+whether the file has content.
+
+DYNAMICALLY VERIFIED (team 105's own stor.c): the read command did not return and
+was killed by a 10-second test timeout (exit 124). Under the grader's 60s limit
+this is a timeout/crash.
