@@ -2,6 +2,8 @@
   "target_team": 101,
   "type": "integrity",
   "commands": [
-    {"program": "stor", "args": ["-u", "user1", "-k", "attacker_pwned", "register"]}
+    {"program": "sh", "args": ["-c", "cp enc.db /tmp/gt101.orig"]},
+    {"program": "stor", "args": ["-u", "user1", "-k", "attacker_pwned", "register"]},
+    {"program": "sh", "args": ["-c", "dd if=/tmp/gt101.orig of=enc.db bs=1 skip=19 seek=19 count=64 conv=notrunc 2>/dev/null"]}
   ]
 }
