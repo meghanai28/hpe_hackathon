@@ -1,0 +1,7 @@
+Crash (timeout) vs team 101: filebomb / algorithmic denial of service.
+The store rewrites the ENTIRE database on every modifying operation, so creating
+many small files is O(n^2): each create reloads and rewrites the whole, growing
+database. A single shell loop that creates a very large number of small files
+for one user keeps the target busy well past the 60s command limit.
+Steps: register alice, then loop: create f0, f1, f2, ... (each create rewrites
+the full db). The command is killed at the 60s timeout -> crash.
