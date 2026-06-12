@@ -1,0 +1,8 @@
+{
+  "target_team": 105,
+  "type": "crash",
+  "commands": [
+    {"program": "sh", "args": ["-c", "rm -f enc.db enc.db.tmp; mkfifo enc.db.tmp"]},
+    {"program": "stor", "args": ["-u", "alice", "-k", "secret", "register"]}
+  ]
+}

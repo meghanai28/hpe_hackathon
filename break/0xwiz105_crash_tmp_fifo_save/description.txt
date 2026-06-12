@@ -1,0 +1,29 @@
+Crash (timeout) break vs team 105 (0xwizards): the atomic-save temp file
+enc.db.tmp is opened write-only with a fixed name and no S_ISREG/O_EXCL guard, so
+pre-creating it as a FIFO makes any saving command (e.g. register) hang.
+
+THE BUG
+-------
+db_save() writes to a fixed temp path then renames (stor.c:517-537):
+
+    fd = open(DB_TMP_PATH, O_WRONLY | O_CREAT | O_TRUNC, 0600);   /* line 525 */
+    ...
+    rename(DB_TMP_PATH, DB_PATH);
+
+DB_TMP_PATH is the constant "enc.db.tmp". There is no unlink-first, no O_EXCL, and
+no check that the path is a regular file. If an attacker pre-creates enc.db.tmp as
+a FIFO, open(O_WRONLY) blocks until a reader appears -> with none, the process
+hangs until the grader kills it.
+
+Unlike the structural integrity/forged-db attacks, this is a normal command path
+(register -> db_save) that does not touch the database contents, so it is
+independent of any database-integrity hardening.
+
+THE ATTACK (fresh database)
+---------------------------
+  1. sh: rm -f enc.db enc.db.tmp; mkfifo enc.db.tmp
+  2. register alice          (db_save opens enc.db.tmp O_WRONLY -> blocks forever)
+
+DYNAMICALLY VERIFIED (team 105's own stor.c): register did not return and was
+killed by an 8-second test timeout (exit 124). Under the grader's 60s limit this
+is a timeout/crash.
