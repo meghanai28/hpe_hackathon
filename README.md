@@ -1,5 +1,5 @@
-GreatTeam26
-First-place winners of HPE Hackathon at Silicon Valley Cybersecurity Conference (SVCC 2026)
+GreatTeam26,
+🏆 First-place winners of HPE Hackathon at Silicon Valley Cybersecurity Conference (SVCC 2026)
 
 /# BiBiFi Starter Package — `stor` (Secure File Store)
 
