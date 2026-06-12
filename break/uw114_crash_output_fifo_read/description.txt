@@ -1,0 +1,9 @@
+Crash (timeout) vs team 114: read -o to a reader-less FIFO blocks forever in a
+blocking write-only open (no S_ISREG/O_NONBLOCK), exceeding the 60s limit.
+
+  1. register alice / create doc / write hello
+  2. sh: mkfifo crash_fifo
+  3. read -o crash_fifo  (blocks forever)
+
+DYNAMICALLY VERIFIED against the team own stor.c: read killed by an 8s test
+timeout (exit 124); under the grader 60s limit this is a timeout/crash.

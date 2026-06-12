@@ -1,0 +1,6 @@
+Correctness vs team 115 (Husker): registering an already-existing user is
+accepted and silently overwrites the user key hash, instead of being rejected.
+
+A second "register alice" returns exit 0 on Husker; a correct implementation
+rejects re-registration (it cannot verify the caller identity) and prints
+invalid, exit 255. VERIFIED: Husker 2nd register -> exit 0; reference -> 255.

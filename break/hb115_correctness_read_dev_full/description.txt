@@ -1,0 +1,12 @@
+Correctness vs team 115: read -o to /dev/full silently succeeds despite the
+output write failing with ENOSPC.
+
+THE BUG
+-------
+read -o opens the output path and writes the plaintext, but does not check the
+return of fwrite/fclose. Writing to /dev/full always fails with ENOSPC, yet the
+target exits 0 having produced no output. The spec says any error must print
+invalid and exit 255 -- a failed output write is an error.
+
+VERIFIED: target exits 0 (empty) on read -o /dev/full; the reference fails
+closed (prints invalid, exit 255). expected matches the reference.
