@@ -1,0 +1,3 @@
+For read -o, do_read() opens the output path with fopen(outfile, "wb"). 
+If the output path is a FIFO and no reader exists, opening for write blocks. 
+A newly created file has content_len == 0, so the code reaches the output open immediately and times out.

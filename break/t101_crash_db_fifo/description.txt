@@ -1,0 +1,3 @@
+The program always calls load_db() before dispatching the requested action. 
+load_db() opens enc.db with fopen("enc.db", "rb") and never checks that the path is a regular file. 
+If enc.db is a FIFO with no writer, fopen blocks forever, so the grader's 60-second timeout counts as a crash.
