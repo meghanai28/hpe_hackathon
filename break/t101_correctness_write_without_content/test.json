@@ -1,0 +1,42 @@
+{
+  "target_team": 101,
+  "type": "correctness",
+  "commands": [
+    {
+      "program": "stor",
+      "args": [
+        "-u",
+        "alice",
+        "-k",
+        "key",
+        "register"
+      ]
+    },
+    {
+      "program": "stor",
+      "args": [
+        "-u",
+        "alice",
+        "-f",
+        "file",
+        "create"
+      ]
+    },
+    {
+      "program": "stor",
+      "args": [
+        "-u",
+        "alice",
+        "-k",
+        "key",
+        "-f",
+        "file",
+        "write"
+      ]
+    }
+  ],
+  "expected": {
+    "return_code": 255,
+    "stdout": "invalid"
+  }
+}

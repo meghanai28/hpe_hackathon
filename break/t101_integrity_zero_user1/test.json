@@ -1,0 +1,13 @@
+{
+  "target_team": 101,
+  "type": "integrity",
+  "commands": [
+    {
+      "program": "python3",
+      "args": [
+        "-c",
+        "import sys\np='enc.db'\nb=bytearray(open(p,'rb').read())\no=8\nnu=int.from_bytes(b[o:o+4],'big'); o+=4\nfor _ in range(nu):\n    ulen=int.from_bytes(b[o:o+2],'big'); o+=2\n    user=bytes(b[o:o+ulen]).decode('utf-8','ignore'); o+=ulen\n    o += 32 + 32\n    nf=int.from_bytes(b[o:o+4],'big'); o+=4\n    for _ in range(nf):\n        flen=int.from_bytes(b[o:o+2],'big'); o+=2\n        fn=bytes(b[o:o+flen]).decode('utf-8','ignore'); o+=flen\n        o += 16 + 32\n        len_off=o\n        clen=int.from_bytes(b[o:o+4],'big'); o+=4\n        ct_off=o\n        o += clen\n        if user == 'user1' and fn == 'file1':\n            b[len_off:len_off+4] = (0).to_bytes(4,'big')\n            del b[ct_off:ct_off+clen]\n            open(p,'wb').write(b)\n            raise SystemExit(0)\nraise SystemExit(1)"
+      ]
+    }
+  ]
+}

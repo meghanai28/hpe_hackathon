@@ -1,0 +1,3 @@
+For write -i, do_write() calls fopen(infile, "rb") directly. 
+A FIFO opened for reading with no writer blocks indefinitely. 
+The setup creates a normal user/file and then passes a FIFO as the input file, causing the final stor command to time out.

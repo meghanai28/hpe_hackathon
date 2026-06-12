@@ -1,0 +1,6 @@
+The database stores usernames and filenames in plaintext and do_read() 
+treats any FileEntry with content_len == 0 as an empty authenticated file. 
+This break parses enc.db, finds user1/file1, sets its content_len field to zero, 
+and removes the old ciphertext bytes so load_db() still reaches EOF cleanly. 
+The user's salt/auth_tag remain untouched, so the grader can still authenticate with the real key, 
+but the reread returns empty content instead of the original integrity flag.

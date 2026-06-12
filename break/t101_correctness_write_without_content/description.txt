@@ -1,0 +1,3 @@
+The spec expects write to receive content text or an input file. 
+This implementation accepts a write command with neither one: main() passes content == NULL and do_write() 
+silently treats it as an empty string. The final command should be invalid but returns success and writes an empty encrypted file.
