@@ -1,0 +1,18 @@
+{
+  "target_team": 101,
+  "type": "correctness",
+  "commands": [
+    {
+      "program": "stor",
+      "args": [
+        "-u",
+        "alice",
+        "-k",
+        "key",
+        "register",
+        "unexpected_extra_argument"
+      ]
+    }
+  ],
+  "expected": [ {"stdout":"invalid","exit":255} ]
+}

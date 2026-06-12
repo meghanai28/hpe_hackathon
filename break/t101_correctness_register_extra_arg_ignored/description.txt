@@ -1,0 +1,3 @@
+The parser only records argv[optind] as the action and argv[optind+1] as optional write content;
+ it does not reject additional positional arguments for actions that should not take content. 
+ As a result, 'register unexpected_extra_argument' succeeds even though register should not accept a content argument.
