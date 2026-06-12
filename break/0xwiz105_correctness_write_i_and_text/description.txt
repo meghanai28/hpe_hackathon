@@ -1,0 +1,11 @@
+Correctness break for team 105 (0xwizards): the write command accepts two
+conflicting content sources.
+
+The contest interface says write content comes from either an inline argument or
+an -i input file. Supplying both is contradictory and should be rejected with
+"invalid" and exit 255.
+
+In stor.c do_write(), the implementation checks `if (infile)` first and reads
+that file, silently ignoring the inline text argument. main() also allows the
+action plus one text argument even when -i was supplied. Therefore the final
+command succeeds and writes oxw_in.txt instead of returning invalid.

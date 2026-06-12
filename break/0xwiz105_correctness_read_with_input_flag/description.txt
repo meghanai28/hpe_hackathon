@@ -1,0 +1,9 @@
+Correctness break for team 105 (0xwizards): read accepts an input-file flag.
+
+The read command supports stdout or -o output; -i is only meaningful for write.
+Supplying -i to read is a contradictory argument combination and should be
+rejected with "invalid" and exit 255.
+
+In stor.c main(), getopt records -i globally, but the read dispatch passes only
+outfile into do_read(). The infile value is ignored, so the final command
+successfully reads "hello" instead of reporting invalid.
