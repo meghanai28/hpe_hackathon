@@ -1,0 +1,5 @@
+Crash (timeout) vs team 101: read -o to a reader-less FIFO blocks forever in the
+output open (no S_ISREG/O_NONBLOCK guard), exceeding the 60s limit.
+Steps: register/create/write, sh mkfifo crash_fifo, then read -o crash_fifo.
+DYNAMICALLY VERIFIED against the team own stor.c: read killed by an 8s test
+timeout (exit 124); under the 60s grader limit this is a timeout/crash.

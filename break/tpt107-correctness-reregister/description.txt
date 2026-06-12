@@ -1,0 +1,6 @@
+Correctness vs team 107: registering an already-existing user is accepted and
+silently overwrites the stored user record, instead of being rejected.
+A second register of the same username returns exit 0 on this target; a correct
+implementation rejects re-registration (it cannot verify the caller identity)
+and prints invalid, exit 255. VERIFIED: target 2nd register exits 0; reference
+exits 255.

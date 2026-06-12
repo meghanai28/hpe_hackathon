@@ -1,0 +1,68 @@
+{
+  "target_team": 108,
+  "type": "correctness",
+  "commands": [
+    {
+      "program": "stor",
+      "args": [
+        "-u",
+        "alice",
+        "-k",
+        "secret",
+        "register"
+      ]
+    },
+    {
+      "program": "stor",
+      "args": [
+        "-u",
+        "alice",
+        "-f",
+        "doc",
+        "create"
+      ]
+    },
+    {
+      "program": "stor",
+      "args": [
+        "-u",
+        "alice",
+        "-k",
+        "secret",
+        "-f",
+        "doc",
+        "write",
+        "DATA"
+      ]
+    },
+    {
+      "program": "stor",
+      "args": [
+        "-u",
+        "alice",
+        "-k",
+        "secret",
+        "-f",
+        "doc",
+        "-o",
+        "/dev/full",
+        "read"
+      ]
+    }
+  ],
+  "expected": [
+    {
+      "exit": 0
+    },
+    {
+      "exit": 0
+    },
+    {
+      "exit": 0
+    },
+    {
+      "stdout": "invalid",
+      "exit": 255
+    }
+  ]
+}

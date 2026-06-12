@@ -1,0 +1,6 @@
+Correctness vs team 112: read -o /dev/full silently succeeds even though the
+output write fails with ENOSPC. The target does not check fwrite/fclose return
+and exits 0 with no output. The spec requires any error to print invalid and
+exit 255, and a failed output write is an error.
+VERIFIED: target exits 0 on read -o /dev/full; the reference fails closed
+(prints invalid, exit 255). expected matches the reference.
