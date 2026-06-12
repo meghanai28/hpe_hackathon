@@ -1,0 +1,7 @@
+Crash break for CPSLO-108: db_load also trusts file_count and allocates
+file_count * sizeof(FileMeta) plus file_count pointers with no bound checks.
+
+On the 32-bit contest build, file_count 1073741824 wraps those allocation sizes
+to zero. The loader then reads a FileMeta into the undersized allocation and/or
+walks a huge corrupted file_data array during cleanup. The malformed fresh
+database should segfault, abort, or timeout.

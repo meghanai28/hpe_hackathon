@@ -1,0 +1,5 @@
+Correctness break for CPSLO-108: register ignores an extra positional argument.
+
+Register takes no content argument. main() records argv[optind + 1] as content
+but never rejects it for register, so "register unexpected" succeeds instead of
+returning invalid.

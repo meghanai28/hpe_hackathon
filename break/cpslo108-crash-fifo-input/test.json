@@ -1,0 +1,47 @@
+{
+  "target_team": 108,
+  "type": "crash",
+  "commands": [
+    {
+      "program": "stor",
+      "args": [
+        "-u",
+        "alice",
+        "-k",
+        "secret",
+        "register"
+      ]
+    },
+    {
+      "program": "stor",
+      "args": [
+        "-u",
+        "alice",
+        "-f",
+        "doc",
+        "create"
+      ]
+    },
+    {
+      "program": "sh",
+      "args": [
+        "-c",
+        "rm -f cpslo_in_fifo; mkfifo cpslo_in_fifo"
+      ]
+    },
+    {
+      "program": "stor",
+      "args": [
+        "-u",
+        "alice",
+        "-k",
+        "secret",
+        "-f",
+        "doc",
+        "-i",
+        "cpslo_in_fifo",
+        "write"
+      ]
+    }
+  ]
+}

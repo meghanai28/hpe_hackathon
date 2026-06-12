@@ -1,0 +1,8 @@
+Crash break for CPSLO-108: db_load trusts the signed user_count from enc.db and
+multiplies it by sizeof(User) with no upper bound or overflow check.
+
+On the required 32-bit build, user_count 268435456 makes
+user_count * sizeof(User) wrap to zero. malloc(0) returns a tiny allocation, then
+fread attempts to read a 304-byte User record into it. Loading the malformed DB
+corrupts heap state and should segfault or abort while processing the register
+command.

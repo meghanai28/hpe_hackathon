@@ -1,0 +1,22 @@
+{
+  "target_team": 108,
+  "type": "correctness",
+  "commands": [
+    {
+      "program": "stor",
+      "args": [
+        "-u",
+        "",
+        "-k",
+        "secret",
+        "register"
+      ]
+    }
+  ],
+  "expected": [
+    {
+      "stdout": "invalid",
+      "exit": 255
+    }
+  ]
+}

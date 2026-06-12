@@ -1,0 +1,5 @@
+Correctness break for CPSLO-108: an empty filename is accepted by create.
+
+The file argument is required to name a file, so a zero-length filename should be
+invalid. The implementation checks only for a missing -f pointer and for
+strlen(file) >= MAX_NAME, allowing an empty string to be stored as a filename.

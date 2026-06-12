@@ -1,0 +1,9 @@
+Integrity break for CPSLO-108: duplicate file records are accepted and lookup
+uses the first matching record.
+
+The database has no global MAC and no duplicate-record detection. This command
+inserts a new empty FileMeta record for user1/file1 before the original records
+and increments file_count. The user table is unchanged, so the real key still
+passes verify_key. db_find_file returns the injected first user1/file1 record,
+whose encrypted_len is zero, so read treats file1 as an empty file. That changes
+user1/file1 without knowing the real key.

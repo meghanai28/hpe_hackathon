@@ -1,0 +1,5 @@
+Correctness break for CPSLO-108: an empty username is accepted.
+
+The CLI requires a user value. A zero-length username should be invalid. The
+implementation only checks that -u exists and that strlen(user) is less than
+MAX_NAME, so "-u ''" passes validation and register succeeds.

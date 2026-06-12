@@ -1,0 +1,5 @@
+Correctness break for CPSLO-108: creating an already-existing file succeeds.
+
+A create operation for an existing file should be rejected as invalid. This
+implementation calls db_find_file and returns success when the file already
+exists, making duplicate create a silent no-op.

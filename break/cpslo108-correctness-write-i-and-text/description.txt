@@ -1,0 +1,5 @@
+Correctness break for CPSLO-108: write accepts both -i and inline content.
+
+The write command should take content from either an input file or an inline
+argument. Supplying both is contradictory and should be invalid. CPSLO-108 checks
+infile first and silently ignores the inline text, so the command succeeds.

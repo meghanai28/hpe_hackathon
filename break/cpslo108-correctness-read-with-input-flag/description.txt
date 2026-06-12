@@ -1,0 +1,5 @@
+Correctness break for CPSLO-108: read accepts and ignores -i.
+
+The -i input-file flag belongs to write, not read. The parser stores infile
+globally, but the read branch never checks it, so the final command prints the
+file contents instead of returning invalid.

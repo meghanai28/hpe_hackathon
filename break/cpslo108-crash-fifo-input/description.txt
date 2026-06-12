@@ -1,0 +1,7 @@
+Crash/timeout break for CPSLO-108: write -i opens input paths with blocking
+fopen(infile, "rb") and does not reject FIFOs.
+
+After registering alice and creating doc, the test creates a named pipe with no
+writer. The final write command reaches fopen() on that FIFO and blocks forever
+waiting for a writer. The grader kills it after 60 seconds, which counts as a
+crash.

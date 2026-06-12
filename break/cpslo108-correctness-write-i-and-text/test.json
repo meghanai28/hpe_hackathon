@@ -1,0 +1,63 @@
+{
+  "target_team": 108,
+  "type": "correctness",
+  "commands": [
+    {
+      "program": "stor",
+      "args": [
+        "-u",
+        "alice",
+        "-k",
+        "secret",
+        "register"
+      ]
+    },
+    {
+      "program": "stor",
+      "args": [
+        "-u",
+        "alice",
+        "-f",
+        "doc",
+        "create"
+      ]
+    },
+    {
+      "program": "sh",
+      "args": [
+        "-c",
+        "printf file-input > cpslo_in.txt"
+      ]
+    },
+    {
+      "program": "stor",
+      "args": [
+        "-u",
+        "alice",
+        "-k",
+        "secret",
+        "-f",
+        "doc",
+        "-i",
+        "cpslo_in.txt",
+        "write",
+        "inline-text"
+      ]
+    }
+  ],
+  "expected": [
+    {
+      "exit": 0
+    },
+    {
+      "exit": 0
+    },
+    {
+      "exit": 0
+    },
+    {
+      "stdout": "invalid",
+      "exit": 255
+    }
+  ]
+}
